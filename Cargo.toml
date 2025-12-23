@@ -1,0 +1,22 @@
+[package]
+name = "claunch"
+version = "1.0.0"
+edition = "2024"
+authors = ["Santiagolxx", "Notstaff", "CubicLauncher contributors"]
+license = "AGPL-3.0-or-later"
+description = "Universal Minecraft Launcher Library - Supports Vanilla, Forge, NeoForge and Fabric"
+
+[dependencies]
+log = "0.4.29"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.146"
+thiserror = "2.0.17"
+uuid = { version = "1.19.0", features = ["v4"] }
+
+
+[dev-dependencies]
+env_logger = "0.11"
+
+[lib]
+name = "claunch"
+path = "src/lib.rs"
