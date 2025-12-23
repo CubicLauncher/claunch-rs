@@ -1,10 +1,10 @@
 [package]
-name = "claunch"
+name = "vessel"
 version = "1.0.0"
 edition = "2024"
-authors = ["Santiagolxx", "Notstaff", "CubicLauncher contributors"]
+authors = ["Santiagolxx", "CubicLauncher contributors"]
 license = "AGPL-3.0-or-later"
-description = "Universal Minecraft Launcher Library - Supports Vanilla, Forge, NeoForge and Fabric"
+description = "Minecraft launcher library for CubicLauncher"
 
 [dependencies]
 log = "0.4.29"
