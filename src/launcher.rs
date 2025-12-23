@@ -234,11 +234,10 @@ impl Launcher {
         let mut resolver = DependencyResolver::new(info.lib_dir.clone(), info.natives_dir.clone());
 
         // Process parent first (is_child = false)
-        if info.has_inheritance() {
-            if let Some(base_data) = &info.base_version_data {
+        if info.has_inheritance()
+            && let Some(base_data) = &info.base_version_data {
                 resolver.process_version(base_data, false);
             }
-        }
 
         // Process child after (is_child = true) - has priority in conflicts
         resolver.process_version(&info.version_data, true);

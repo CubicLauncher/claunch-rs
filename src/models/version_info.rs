@@ -98,20 +98,17 @@ impl VersionInfo {
 
     fn resolve_java_version(version_data: &Value, base_version_data: &Option<Value>) -> String {
         // Try child version first
-        if let Some(java_ver) = version_data.get("javaVersion") {
-            if let Some(major) = java_ver.get("majorVersion").and_then(|v| v.as_u64()) {
+        if let Some(java_ver) = version_data.get("javaVersion")
+            && let Some(major) = java_ver.get("majorVersion").and_then(|v| v.as_u64()) {
                 return major.to_string();
             }
-        }
 
         // Try parent version
-        if let Some(base) = base_version_data {
-            if let Some(java_ver) = base.get("javaVersion") {
-                if let Some(major) = java_ver.get("majorVersion").and_then(|v| v.as_u64()) {
+        if let Some(base) = base_version_data
+            && let Some(java_ver) = base.get("javaVersion")
+                && let Some(major) = java_ver.get("majorVersion").and_then(|v| v.as_u64()) {
                     return major.to_string();
                 }
-            }
-        }
 
         "0".to_string()
     }

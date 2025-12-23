@@ -99,13 +99,11 @@ impl<'a> CommandBuilder<'a> {
             self.process_jvm_array(child_args);
         }
 
-        if self.info.has_inheritance() {
-            if let Some(base_data) = &self.info.base_version_data {
-                if let Some(parent_args) = json_utils::get_args_from_version(base_data, "jvm") {
+        if self.info.has_inheritance()
+            && let Some(base_data) = &self.info.base_version_data
+                && let Some(parent_args) = json_utils::get_args_from_version(base_data, "jvm") {
                     self.process_jvm_array(parent_args);
                 }
-            }
-        }
     }
 
     fn process_jvm_array(&mut self, args: &[Value]) {
@@ -133,11 +131,10 @@ impl<'a> CommandBuilder<'a> {
     }
 
     fn process_conditional_arg(&mut self, arg_obj: &serde_json::Map<String, Value>) {
-        if let Some(rules) = arg_obj.get("rules").and_then(|v| v.as_array()) {
-            if !json_utils::evaluate_rules(rules) {
+        if let Some(rules) = arg_obj.get("rules").and_then(|v| v.as_array())
+            && !json_utils::evaluate_rules(rules) {
                 return;
             }
-        }
 
         if let Some(value) = arg_obj.get("value") {
             if let Some(val_str) = value.as_str() {
@@ -201,11 +198,10 @@ impl<'a> CommandBuilder<'a> {
         if let Some(args) = child_args {
             self.add_game_args_array(args);
         } else if self.info.has_inheritance() {
-            if let Some(base_data) = &self.info.base_version_data {
-                if let Some(parent_args) = json_utils::get_args_from_version(base_data, "game") {
+            if let Some(base_data) = &self.info.base_version_data
+                && let Some(parent_args) = json_utils::get_args_from_version(base_data, "game") {
                     self.add_game_args_array(parent_args);
                 }
-            }
         } else {
             self.add_legacy_args();
         }
@@ -236,12 +232,11 @@ impl<'a> CommandBuilder<'a> {
 
                 self.command.push(self.replace_vars(arg));
             } else if let Some(arg_obj) = element.as_object() {
-                if let Some(rules) = arg_obj.get("rules").and_then(|v| v.as_array()) {
-                    if !self.evaluate_rules_with_options(rules) {
+                if let Some(rules) = arg_obj.get("rules").and_then(|v| v.as_array())
+                    && !self.evaluate_rules_with_options(rules) {
                         i += 1;
                         continue;
                     }
-                }
 
                 if let Some(value) = arg_obj.get("value") {
                     self.add_game_value(value);
@@ -308,11 +303,10 @@ impl<'a> CommandBuilder<'a> {
             }
         } else if let Some(values) = value.as_array() {
             for val in values {
-                if let Some(arg) = val.as_str() {
-                    if self.should_filter_arg(arg) {
+                if let Some(arg) = val.as_str()
+                    && self.should_filter_arg(arg) {
                         self.command.push(self.replace_vars(arg));
                     }
-                }
             }
         }
     }

@@ -166,13 +166,12 @@ impl DependencyResolver {
         let libs = version_data.get("libraries")?.as_array()?;
 
         for lib_value in libs {
-            if let Ok(lib) = serde_json::from_value::<Library>(lib_value.clone()) {
-                if lib.name.contains("net.minecraftforge:forge:")
-                    || lib.name.contains("net.minecraftforge:minecraftforge:")
+            if let Ok(lib) = serde_json::from_value::<Library>(lib_value.clone())
+                && (lib.name.contains("net.minecraftforge:forge:")
+                    || lib.name.contains("net.minecraftforge:minecraftforge:"))
                 {
                     return self.build_forge_path(&lib.name);
                 }
-            }
         }
         None
     }
