@@ -3,12 +3,13 @@
 
 use crate::models::{LaunchOptions, VersionInfo};
 use crate::resolvers::{CommandBuilder, DependencyResolver};
+use log::{debug, error, info, warn};
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::path::Path;
+use std::process::{Command, Stdio};
 
-/// Universal Minecraft Launcher – Versión con prints de depuración
+/// Universal Minecraft Launcher – Versión con logging detallado
 pub struct Launcher;
 
 impl Launcher {
@@ -41,7 +42,7 @@ impl Launcher {
         )
     }
 
-    /// Lanzamiento con opciones – VERSIÓN CON PRINTS
+    /// Lanzamiento con opciones – con logging detallado
     pub fn launch_with_options(
         version_json_path: impl AsRef<Path>,
         shared_dir: impl AsRef<Path>,
@@ -56,47 +57,48 @@ impl Launcher {
         options: LaunchOptions,
         custom_env: HashMap<String, String>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        println!("\n========== CUBICLAUNCHER DEBUG ==========");
-        println!("[1] Parámetros recibidos:");
-        println!(
+        info!("========== CUBICLAUNCHER CLAUNCH ==========");
+        debug!("[1] Parámetros recibidos:");
+        debug!(
             "    version_json_path: {}",
             version_json_path.as_ref().display()
         );
-        println!("    shared_dir:        {}", shared_dir.as_ref().display());
-        println!("    game_dir:          {}", game_dir.as_ref().display());
-        println!("    username:          {}", username);
-        println!("    java_path:         {}", java_path.as_ref().display());
-        println!("    min_ram:           {}", min_ram);
-        println!("    max_ram:           {}", max_ram);
-        println!("    width x height:    {}x{}", width, height);
-        println!("    cracked:           {}", cracked);
-        println!("    demo_mode:         {}", options.demo_mode);
+        debug!("    shared_dir:        {}", shared_dir.as_ref().display());
+        debug!("    game_dir:          {}", game_dir.as_ref().display());
+        debug!("    username:          {}", username);
+        debug!("    java_path:         {}", java_path.as_ref().display());
+        debug!("    min_ram:           {}", min_ram);
+        debug!("    max_ram:           {}", max_ram);
+        debug!("    width x height:    {}x{}", width, height);
+        debug!("    cracked:           {}", cracked);
+        debug!("    demo_mode:         {}", options.demo_mode);
         if !custom_env.is_empty() {
-            println!("    custom_env:        {:?}", custom_env);
+            debug!("    custom_env:        {:?}", custom_env);
         }
 
         // ------------------------------------------------------------
         // Crear VersionInfo (aquí se construyen las rutas internas)
         // ------------------------------------------------------------
-        println!("\n[2] Creando VersionInfo...");
+        debug!("[2] Creando VersionInfo...");
         let info = VersionInfo::new(version_json_path, shared_dir.as_ref(), game_dir.as_ref())?;
-        println!("    version_id:        {}", info.version_id);
-        println!("    lib_dir:           {}", info.lib_dir.display());
-        println!("    assets_dir:        {}", info.assets_dir.display());
-        println!("    natives_dir:       {}", info.natives_dir.display());
-        println!("    game_dir:          {}", info.shared_dir.display());
+        debug!("    version_id:        {}", info.version_id);
+        debug!("    lib_dir:           {}", info.lib_dir.display());
+        debug!("    assets_dir:        {}", info.assets_dir.display());
+        debug!("    natives_dir:       {}", info.natives_dir.display());
+        debug!("    shared_dir:        {}", info.shared_dir.display());
+        debug!("    instance_dir:      {}", info.instance_dir.display());
 
         // Verificar existencia de los directorios clave
-        println!("\n[3] Verificando directorios críticos:");
+        debug!("[3] Verificando directorios críticos:");
         check_dir_exists(&info.lib_dir, "libraries");
         check_dir_exists(&info.assets_dir, "assets");
         check_dir_exists(&info.natives_dir, "natives");
 
         // Contar JARs en libraries (recursivamente)
         let jar_count = count_jars_recursive(&info.lib_dir);
-        println!("    Total de archivos .jar en libraries: {}", jar_count);
+        debug!("    Total de archivos .jar en libraries: {}", jar_count);
         if jar_count == 0 {
-            println!("    ⚠️  ¡No hay ningún JAR! El classpath estará vacío.");
+            warn!("    ⚠️  No hay ningún JAR en libraries. El classpath podría quedar vacío.");
         }
 
         // Crear directorios adicionales (assets/virtual, config)
@@ -105,74 +107,69 @@ impl Launcher {
         // ------------------------------------------------------------
         // Obtener mainClass
         // ------------------------------------------------------------
-        println!("\n[4] Buscando mainClass...");
+        debug!("[4] Buscando mainClass...");
         let main_class = info
             .get_property("mainClass")
             .ok_or("Main class not found")?;
-        println!("    mainClass: {}", main_class);
+        debug!("    mainClass: {}", main_class);
 
         // ------------------------------------------------------------
         // Construir classpath
         // ------------------------------------------------------------
-        println!("\n[5] Construyendo classpath...");
+        debug!("[5] Construyendo classpath...");
         let classpath = Self::build_classpath(&info)?;
         if classpath.is_empty() {
-            println!("    ❌ ERROR: classpath vacío");
+            error!("    ❌ Classpath vacío");
             return Err("Classpath is empty".into());
         }
-        println!(
+        debug!(
             "    ✅ classpath construido, longitud: {} caracteres",
             classpath.len()
         );
-        println!("    Primeros 200 caracteres del classpath:");
-        println!("        {}", &classpath[..classpath.len().min(200)]);
 
-        // ------------------------------------------------------------
-        // Construir variables de entorno para el juego
-        // ------------------------------------------------------------
-        println!("\n[6] Construyendo variables de plantilla...");
+        debug!("[6] Construyendo variables de plantilla...");
         let vars = Self::build_variables(&info, username, game_dir.as_ref());
         for (k, v) in &vars {
-            println!("    {} = {}", k, v);
+            debug!("    {} = {}", k, v);
         }
 
         // ------------------------------------------------------------
         // Construir comando final
         // ------------------------------------------------------------
-        println!("\n[7] Construyendo línea de comandos...");
+        debug!("[7] Construyendo línea de comandos...");
         let command = Self::build_command(
             &info, vars, options, &java_path, min_ram, max_ram, cracked, &classpath, main_class,
             width, height,
         );
-        println!("    Comando construido ({} argumentos):", command.len());
+        debug!("    Comando construido ({} argumentos):", command.len());
         for (i, arg) in command.iter().enumerate() {
-            println!("      [{}] {}", i, arg);
+            debug!("      [{}] {}", i, arg);
         }
 
         // ------------------------------------------------------------
         // Ejecutar el juego
         // ------------------------------------------------------------
-        println!("\n[8] Lanzando proceso del juego...");
+        info!("[8] Lanzando proceso del juego...");
         Self::execute_game(command, game_dir.as_ref(), &java_path, custom_env)?;
 
-        println!("\n========== FIN (ejecución correcta) ==========");
+        info!("========== FIN (ejecución correcta) ==========");
         Ok(())
     }
 
     // Mantén los otros métodos públicos (launch_with_process, launch_with_dprime)
-    // con prints similares si quieres depurarlos, pero por brevedad no los repito aquí.
+    // con logs similares si quieres, pero por brevedad no los repito aquí.
     // ...
 
-    // ==================== MÉTODOS AUXILIARES (con prints) ====================
+    // ==================== MÉTODOS AUXILIARES (con logging) ====================
 
     fn prepare_directories(info: &VersionInfo) -> Result<(), Box<dyn std::error::Error>> {
         let assets_virtual = info.get_assets_virtual_dir();
-        println!(
+        debug!(
             "    Creando directorio assets virtual: {}",
             assets_virtual.display()
         );
         fs::create_dir_all(&assets_virtual)?;
-        fs::create_dir_all(&info.instance_dir)?; // <-- instance_dir
+        fs::create_dir_all(&info.instance_dir)?;
         Ok(())
     }
 
@@ -225,7 +222,7 @@ impl Launcher {
     }
 
     fn build_classpath(info: &VersionInfo) -> Result<String, Box<dyn std::error::Error>> {
-        println!(
+        debug!(
             "    Inicializando DependencyResolver con lib_dir = {}",
             info.lib_dir.display()
         );
@@ -243,9 +240,9 @@ impl Launcher {
         // Construir classpath
         let classpath = resolver.build_classpath(info);
         let count = resolver.library_count();
-        println!("    Se agregaron {} librerías al classpath", count);
+        debug!("    Se agregaron {} librerías al classpath", count);
         if count == 0 {
-            println!("    ⚠️  No se agregó ninguna librería. Revisa el JSON y las reglas.");
+            warn!("    ⚠️  No se agregó ninguna librería. Revisa el JSON y las reglas.");
         }
         Ok(classpath)
     }
@@ -282,10 +279,10 @@ impl Launcher {
     ) -> Result<(), Box<dyn std::error::Error>> {
         let java_home = java_path.as_ref().parent().ok_or("Invalid Java path")?;
 
-        println!("\n[9] Comando final a ejecutar:");
-        println!("    {}", command.join(" "));
-        println!("\n    Directorio de trabajo: {}", game_dir.display());
-        println!("    JAVA_HOME: {}", java_home.display());
+        debug!("[9] Comando final a ejecutar:");
+        debug!("    {}", command.join(" "));
+        debug!("\n    Directorio de trabajo: {}", game_dir.display());
+        debug!("    JAVA_HOME: {}", java_home.display());
 
         let mut cmd = Command::new(&command[0]);
         cmd.args(&command[1..])
@@ -296,31 +293,28 @@ impl Launcher {
             .env("JAVA_HOME", java_home);
 
         for (key, value) in custom_env {
-            println!("    Variable de entorno adicional: {}={}", key, value);
+            debug!("    Variable de entorno adicional: {}={}", key, value);
             cmd.env(key, value);
         }
 
-        println!("\n[10] Lanzando proceso...");
+        debug!("[10] Lanzando proceso...");
         let mut child = cmd.spawn()?;
         let exit_code = child.wait()?;
 
         if exit_code.success() {
-            println!("    ✅ Juego terminado correctamente");
+            info!("    ✅ Juego terminado correctamente");
         } else {
-            println!("    ❌ ERROR: Código de salida: {:?}", exit_code.code());
+            error!("    ❌ ERROR: Código de salida: {:?}", exit_code.code());
         }
         Ok(())
     }
 }
 
-// ------------------------------------------------------------
-// Funciones auxiliares de verificación
-// ------------------------------------------------------------
 fn check_dir_exists(path: &Path, name: &str) {
     if path.exists() {
-        println!("    ✅ {}: {}", name, path.display());
+        debug!("    ✅ {}: {}", name, path.display());
     } else {
-        println!("    ❌ {}: NO EXISTE ({})", name, path.display());
+        warn!("    ❌ {}: NO EXISTE ({})", name, path.display());
     }
 }
 
