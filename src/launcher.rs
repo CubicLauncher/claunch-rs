@@ -59,7 +59,7 @@ impl Launcher {
     ) -> Result<(), Box<dyn std::error::Error>> {
         info!("=== CubicLauncher CLaunch ===");
 
-        let info = VersionInfo::new(version_json_path, shared_dir)?;
+        let info = VersionInfo::new(version_json_path, shared_dir.as_ref())?;
         info!("Version: {}", info.version_id);
         info!("Demo mode: {}", options.demo_mode);
 
@@ -90,7 +90,7 @@ impl Launcher {
             width, height,
         );
 
-        Self::execute_game(command, game_dir.as_ref(), &java_path, custom_env)?;
+        Self::execute_game(command, shared_dir.as_ref(), &java_path, custom_env)?;
         Ok(())
     }
 
@@ -111,7 +111,7 @@ impl Launcher {
     ) -> Result<Child, Box<dyn std::error::Error>> {
         info!("=== CubicLauncher CLaunch ===");
 
-        let info = VersionInfo::new(version_json_path, shared_dir)?;
+        let info = VersionInfo::new(version_json_path, shared_dir.as_ref())?;
         info!("Version: {}", info.version_id);
 
         if !custom_env.is_empty() {
@@ -135,7 +135,7 @@ impl Launcher {
             width, height,
         );
 
-        Self::start_process(command, &info.game_dir, &java_path, custom_env)
+        Self::start_process(command, shared_dir.as_ref(), &java_path, custom_env)
     }
 
     /// Launch with DPRIME environment variable (for compatibility)
