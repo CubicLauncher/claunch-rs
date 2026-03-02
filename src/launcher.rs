@@ -45,8 +45,8 @@ impl Launcher {
     /// Launch with custom options
     pub fn launch_with_options(
         version_json_path: impl AsRef<Path>,
+        shared_dir: impl AsRef<Path>,
         game_dir: impl AsRef<Path>,
-        instance_dir: impl AsRef<Path>,
         username: &str,
         java_path: impl AsRef<Path>,
         min_ram: &str,
@@ -59,7 +59,7 @@ impl Launcher {
     ) -> Result<(), Box<dyn std::error::Error>> {
         info!("=== CubicLauncher CLaunch ===");
 
-        let info = VersionInfo::new(version_json_path, game_dir)?;
+        let info = VersionInfo::new(version_json_path, shared_dir)?;
         info!("Version: {}", info.version_id);
         info!("Demo mode: {}", options.demo_mode);
 
@@ -84,13 +84,13 @@ impl Launcher {
             return Err("Classpath is empty".into());
         }
 
-        let vars = Self::build_variables(&info, username, instance_dir.as_ref());
+        let vars = Self::build_variables(&info, username, game_dir.as_ref());
         let command = Self::build_command(
             &info, vars, options, &java_path, min_ram, max_ram, cracked, &classpath, main_class,
             width, height,
         );
 
-        Self::execute_game(command, &info.game_dir, &java_path, custom_env)?;
+        Self::execute_game(command, game_dir.as_ref(), &java_path, custom_env)?;
         Ok(())
     }
 
@@ -98,7 +98,7 @@ impl Launcher {
     pub fn launch_with_process(
         version_json_path: impl AsRef<Path>,
         game_dir: impl AsRef<Path>,
-        instance_dir: impl AsRef<Path>,
+        shared_dir: impl AsRef<Path>,
         username: &str,
         java_path: impl AsRef<Path>,
         min_ram: &str,
@@ -111,7 +111,7 @@ impl Launcher {
     ) -> Result<Child, Box<dyn std::error::Error>> {
         info!("=== CubicLauncher CLaunch ===");
 
-        let info = VersionInfo::new(version_json_path, game_dir)?;
+        let info = VersionInfo::new(version_json_path, shared_dir)?;
         info!("Version: {}", info.version_id);
 
         if !custom_env.is_empty() {
@@ -129,7 +129,7 @@ impl Launcher {
             return Err("Classpath is empty".into());
         }
 
-        let vars = Self::build_variables(&info, username, instance_dir.as_ref());
+        let vars = Self::build_variables(&info, username, game_dir.as_ref());
         let command = Self::build_command(
             &info, vars, options, &java_path, min_ram, max_ram, cracked, &classpath, main_class,
             width, height,
@@ -235,9 +235,10 @@ impl Launcher {
 
         // Process parent first (is_child = false)
         if info.has_inheritance()
-            && let Some(base_data) = &info.base_version_data {
-                resolver.process_version(base_data, false);
-            }
+            && let Some(base_data) = &info.base_version_data
+        {
+            resolver.process_version(base_data, false);
+        }
 
         // Process child after (is_child = true) - has priority in conflicts
         resolver.process_version(&info.version_data, true);

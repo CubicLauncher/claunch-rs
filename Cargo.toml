@@ -1,5 +1,5 @@
 [package]
-name = "vessel"
+name = "claunch-rs"
 version = "1.0.0"
 edition = "2024"
 authors = ["Santiagolxx", "CubicLauncher contributors"]
@@ -16,7 +16,3 @@ uuid = { version = "1.19.0", features = ["v4"] }
 
 [dev-dependencies]
 env_logger = "0.11"
-
-[lib]
-name = "claunch"
-path = "src/lib.rs"

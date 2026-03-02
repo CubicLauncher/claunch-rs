@@ -1,4 +1,4 @@
-use claunch::{LaunchOptions, Launcher};
+use claunch_rs::{LaunchOptions, Launcher};
 use std::collections::HashMap;
 use std::env;
 use std::path::Path;
@@ -23,7 +23,7 @@ fn main() {
     // AJUSTA ESTOS VALORES:
     let game_dir = env::var("GAME_DIR").unwrap_or_else(|_| "/home/santiagolxx/.cubic".to_string());
 
-    let version_id = "1.16.5";
+    let version_id = "1.12.2";
 
     // Para versiones vanilla:
     let version_json = format!(
