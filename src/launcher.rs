@@ -172,10 +172,6 @@ impl Launcher {
             assets_virtual.display()
         );
         fs::create_dir_all(&assets_virtual)?;
-
-        let config_dir = info.game_dir.join("config");
-        println!("    Creando directorio config: {}", config_dir.display());
-        fs::create_dir_all(config_dir)?;
         Ok(())
     }
 

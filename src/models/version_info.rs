@@ -71,10 +71,9 @@ impl VersionInfo {
         // Resolve Java version
         let minimum_jre_version = Self::resolve_java_version(&version_data, &base_version_data);
 
-        let shared_dir = game_dir.join("shared");
-        let lib_dir = shared_dir.join("libraries");
-        let assets_dir = shared_dir.join("assets");
-        let natives_dir = shared_dir.join("natives").join(&resolved_version_id);
+        let lib_dir = game_dir.join("libraries");
+        let assets_dir = game_dir.join("assets");
+        let natives_dir = game_dir.join("natives").join(&resolved_version_id);
 
         // Verificar que las carpetas críticas existan
         if !lib_dir.exists() {
@@ -99,16 +98,18 @@ impl VersionInfo {
     fn resolve_java_version(version_data: &Value, base_version_data: &Option<Value>) -> String {
         // Try child version first
         if let Some(java_ver) = version_data.get("javaVersion")
-            && let Some(major) = java_ver.get("majorVersion").and_then(|v| v.as_u64()) {
-                return major.to_string();
-            }
+            && let Some(major) = java_ver.get("majorVersion").and_then(|v| v.as_u64())
+        {
+            return major.to_string();
+        }
 
         // Try parent version
         if let Some(base) = base_version_data
             && let Some(java_ver) = base.get("javaVersion")
-                && let Some(major) = java_ver.get("majorVersion").and_then(|v| v.as_u64()) {
-                    return major.to_string();
-                }
+            && let Some(major) = java_ver.get("majorVersion").and_then(|v| v.as_u64())
+        {
+            return major.to_string();
+        }
 
         "0".to_string()
     }
