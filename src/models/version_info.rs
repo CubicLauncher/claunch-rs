@@ -13,7 +13,8 @@ pub struct VersionInfo {
     pub version_id: String,
     pub base_version_id: Option<String>,
     pub resolved_version_id: String,
-    pub game_dir: PathBuf,
+    pub shared_dir: PathBuf,
+    pub instance_dir: PathBuf,
     pub lib_dir: PathBuf,
     pub assets_dir: PathBuf,
     pub natives_dir: PathBuf,
@@ -24,10 +25,12 @@ impl VersionInfo {
     /// Create a new VersionInfo from a version JSON file
     pub fn new(
         version_json_path: impl AsRef<Path>,
-        game_dir: impl AsRef<Path>,
+        shared_dir: impl AsRef<Path>,   // <-- separado
+        instance_dir: impl AsRef<Path>, // <-- separado
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let version_json_path = version_json_path.as_ref();
-        let game_dir = game_dir.as_ref().to_path_buf();
+        let shared_dir = shared_dir.as_ref().to_path_buf();
+        let instance_dir = instance_dir.as_ref().to_path_buf();
 
         let version_data = json_utils::load_json(version_json_path).map_err(|e| {
             format!(
@@ -42,12 +45,12 @@ impl VersionInfo {
             .ok_or_else(|| format!("Missing version id in {}", version_json_path.display()))?
             .to_string();
 
-        // Load parent version if inheritance exists
+        // Cargar versión padre si existe
         let (base_version_data, base_version_id, resolved_version_id) = if let Some(inherits_from) =
             version_data.get("inheritsFrom").and_then(|v| v.as_str())
         {
-            let base_json_path = game_dir
-                .join("shared/versions")
+            let base_json_path = shared_dir
+                .join("versions")
                 .join(inherits_from)
                 .join(format!("{}.json", inherits_from));
 
@@ -68,18 +71,14 @@ impl VersionInfo {
             (None, None, version_id.clone())
         };
 
-        // Resolve Java version
         let minimum_jre_version = Self::resolve_java_version(&version_data, &base_version_data);
 
-        let shared_dir = game_dir.join("shared");
         let lib_dir = shared_dir.join("libraries");
         let assets_dir = shared_dir.join("assets");
         let natives_dir = shared_dir.join("natives").join(&resolved_version_id);
 
-        // Verificar que las carpetas críticas existan
         if !lib_dir.exists() {
             log::warn!("Libraries directory does not exist: {}", lib_dir.display());
-            log::warn!("This will likely cause 'Classpath is empty' error");
         }
 
         Ok(Self {
@@ -88,7 +87,8 @@ impl VersionInfo {
             version_id,
             base_version_id,
             resolved_version_id,
-            game_dir,
+            shared_dir,
+            instance_dir,
             lib_dir,
             assets_dir,
             natives_dir,
@@ -99,16 +99,18 @@ impl VersionInfo {
     fn resolve_java_version(version_data: &Value, base_version_data: &Option<Value>) -> String {
         // Try child version first
         if let Some(java_ver) = version_data.get("javaVersion")
-            && let Some(major) = java_ver.get("majorVersion").and_then(|v| v.as_u64()) {
-                return major.to_string();
-            }
+            && let Some(major) = java_ver.get("majorVersion").and_then(|v| v.as_u64())
+        {
+            return major.to_string();
+        }
 
         // Try parent version
         if let Some(base) = base_version_data
             && let Some(java_ver) = base.get("javaVersion")
-                && let Some(major) = java_ver.get("majorVersion").and_then(|v| v.as_u64()) {
-                    return major.to_string();
-                }
+            && let Some(major) = java_ver.get("majorVersion").and_then(|v| v.as_u64())
+        {
+            return major.to_string();
+        }
 
         "0".to_string()
     }
@@ -126,18 +128,16 @@ impl VersionInfo {
             })
     }
 
-    /// Get client JAR path
     pub fn get_client_jar(&self) -> PathBuf {
-        self.game_dir
-            .join("shared/versions")
+        self.shared_dir
+            .join("versions")
             .join(&self.resolved_version_id)
             .join(format!("{}.jar", self.resolved_version_id))
     }
 
-    /// Get version JAR path
     pub fn get_version_jar(&self) -> PathBuf {
-        self.game_dir
-            .join("shared/versions")
+        self.shared_dir
+            .join("versions")
             .join(&self.version_id)
             .join(format!("{}.jar", self.version_id))
     }
