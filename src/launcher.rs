@@ -79,12 +79,12 @@ impl Launcher {
         // Crear VersionInfo (aquí se construyen las rutas internas)
         // ------------------------------------------------------------
         println!("\n[2] Creando VersionInfo...");
-        let info = VersionInfo::new(version_json_path, shared_dir.as_ref())?;
+        let info = VersionInfo::new(version_json_path, shared_dir.as_ref(), game_dir.as_ref())?;
         println!("    version_id:        {}", info.version_id);
         println!("    lib_dir:           {}", info.lib_dir.display());
         println!("    assets_dir:        {}", info.assets_dir.display());
         println!("    natives_dir:       {}", info.natives_dir.display());
-        println!("    game_dir (interno):{}", info.game_dir.display());
+        println!("    game_dir:          {}", info.shared_dir.display());
 
         // Verificar existencia de los directorios clave
         println!("\n[3] Verificando directorios críticos:");
@@ -172,6 +172,7 @@ impl Launcher {
             assets_virtual.display()
         );
         fs::create_dir_all(&assets_virtual)?;
+        fs::create_dir_all(&info.instance_dir)?; // <-- instance_dir
         Ok(())
     }
 
