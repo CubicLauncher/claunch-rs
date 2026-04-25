@@ -27,22 +27,27 @@ impl VersionInfo {
         version_json_path: impl AsRef<Path>,
         shared_dir: impl AsRef<Path>,   // <-- separado
         instance_dir: impl AsRef<Path>, // <-- separado
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    ) -> crate::Result<Self> {
         let version_json_path = version_json_path.as_ref();
         let shared_dir = shared_dir.as_ref().to_path_buf();
         let instance_dir = instance_dir.as_ref().to_path_buf();
 
         let version_data = json_utils::load_json(version_json_path).map_err(|e| {
-            format!(
+            crate::Error::VersionLoadFailed(format!(
                 "Failed to load version file {}: {}",
                 version_json_path.display(),
                 e
-            )
+            ))
         })?;
 
         let version_id = version_data["id"]
             .as_str()
-            .ok_or_else(|| format!("Missing version id in {}", version_json_path.display()))?
+            .ok_or_else(|| {
+                crate::Error::VersionLoadFailed(format!(
+                    "Missing version id in {}",
+                    version_json_path.display()
+                ))
+            })?
             .to_string();
 
         // Cargar versión padre si existe
@@ -55,11 +60,11 @@ impl VersionInfo {
                 .join(format!("{}.json", inherits_from));
 
             let base_data = json_utils::load_json(&base_json_path).map_err(|e| {
-                format!(
+                crate::Error::BaseVersionLoadFailed(format!(
                     "Failed to load base version {}: {}",
                     base_json_path.display(),
                     e
-                )
+                ))
             })?;
 
             (
