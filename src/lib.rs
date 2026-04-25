@@ -5,13 +5,11 @@
 //!
 //! Supports Vanilla, Forge, NeoForge and Fabric with version inheritance system.
 
-pub mod auth;
 pub mod launcher;
 pub mod models;
 pub mod resolvers;
 pub mod utils;
 
-pub use auth::{MinecraftUser, AccountType};
 pub use launcher::Launcher;
 pub use models::{LaunchOptions, Library, VersionInfo};
 
@@ -41,10 +39,4 @@ pub enum Error {
 
     #[error("Failed to load base version: {0}")]
     BaseVersionLoadFailed(String),
-
-    #[error("Authentication error: {0}")]
-    AuthError(String),
-
-    #[error("HTTP error: {0}")]
-    Http(#[from] reqwest::Error),
 }
