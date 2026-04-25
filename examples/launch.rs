@@ -1,4 +1,4 @@
-use claunch_rs::{LaunchOptions, Launcher, MinecraftUser};
+use claunch_rs::{LaunchOptions, Launcher};
 use std::collections::HashMap;
 use std::env;
 use std::path::Path;
@@ -44,18 +44,17 @@ fn main() {
     custom_env.insert("DRI_PRIME".to_string(), "1".to_string());
 
     // ===== LANZAR =====
-    let user = MinecraftUser::cracked("Player");
-
     match Launcher::launch_with_options(
         &version_json,
         &shared_dir, // segundo argumento: directorio que contiene libraries/, assets/, versions/
         &instance_dir, // tercer argumento: directorio de la instancia (mundo, config)
-        user,
+        "Player",
         &java_path,
         "2G",
         "4G",
         854,
         480,
+        true, // cracked mode
         options,
         custom_env,
     ) {

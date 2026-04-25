@@ -1,7 +1,6 @@
 // Copyright (C) 2025 Santiagolxx, Notstaff and CubicLauncher contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use crate::auth::{AccountType, MinecraftUser};
 use crate::models::{LaunchOptions, VersionInfo};
 use crate::resolvers::{CommandBuilder, DependencyResolver};
 use log::{debug, error, info, warn};
@@ -19,23 +18,25 @@ impl Launcher {
         version_json_path: impl AsRef<Path>,
         game_dir: impl AsRef<Path>,
         instance_dir: impl AsRef<Path>,
-        user: MinecraftUser,
+        username: &str,
         java_path: impl AsRef<Path>,
         min_ram: &str,
         max_ram: &str,
         width: u32,
         height: u32,
-    ) -> crate::Result<()> {
+        cracked: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         Self::launch_with_options(
             version_json_path,
             game_dir,
             instance_dir,
-            user,
+            username,
             java_path,
             min_ram,
             max_ram,
             width,
             height,
+            cracked,
             LaunchOptions::default(),
             HashMap::new(),
         )
@@ -46,15 +47,16 @@ impl Launcher {
         version_json_path: impl AsRef<Path>,
         shared_dir: impl AsRef<Path>,
         game_dir: impl AsRef<Path>,
-        user: MinecraftUser,
+        username: &str,
         java_path: impl AsRef<Path>,
         min_ram: &str,
         max_ram: &str,
         width: u32,
         height: u32,
+        cracked: bool,
         options: LaunchOptions,
         custom_env: HashMap<String, String>,
-    ) -> crate::Result<()> {
+    ) -> Result<(), Box<dyn std::error::Error>> {
         info!("========== CUBICLAUNCHER CLAUNCH ==========");
         debug!("[1] Parámetros recibidos:");
         debug!(
@@ -63,12 +65,12 @@ impl Launcher {
         );
         debug!("    shared_dir:        {}", shared_dir.as_ref().display());
         debug!("    game_dir:          {}", game_dir.as_ref().display());
-        debug!("    username:          {}", user.username);
+        debug!("    username:          {}", username);
         debug!("    java_path:         {}", java_path.as_ref().display());
         debug!("    min_ram:           {}", min_ram);
         debug!("    max_ram:           {}", max_ram);
         debug!("    width x height:    {}x{}", width, height);
-        debug!("    account_type:      {:?}", user.user_type);
+        debug!("    cracked:           {}", cracked);
         debug!("    demo_mode:         {}", options.demo_mode);
         if !custom_env.is_empty() {
             debug!("    custom_env:        {:?}", custom_env);
@@ -108,7 +110,7 @@ impl Launcher {
         debug!("[4] Buscando mainClass...");
         let main_class = info
             .get_property("mainClass")
-            .ok_or(crate::Error::MainClassNotFound)?;
+            .ok_or("Main class not found")?;
         debug!("    mainClass: {}", main_class);
 
         // ------------------------------------------------------------
@@ -118,7 +120,7 @@ impl Launcher {
         let classpath = Self::build_classpath(&info)?;
         if classpath.is_empty() {
             error!("    ❌ Classpath vacío");
-            return Err(crate::Error::EmptyClasspath);
+            return Err("Classpath is empty".into());
         }
         debug!(
             "    ✅ classpath construido, longitud: {} caracteres",
@@ -126,8 +128,7 @@ impl Launcher {
         );
 
         debug!("[6] Construyendo variables de plantilla...");
-        let cracked = user.user_type == AccountType::Cracked;
-        let vars = Self::build_variables(&info, user, game_dir.as_ref());
+        let vars = Self::build_variables(&info, username, game_dir.as_ref());
         for (k, v) in &vars {
             debug!("    {} = {}", k, v);
         }
@@ -161,7 +162,7 @@ impl Launcher {
 
     // ==================== MÉTODOS AUXILIARES (con logging) ====================
 
-    fn prepare_directories(info: &VersionInfo) -> crate::Result<()> {
+    fn prepare_directories(info: &VersionInfo) -> Result<(), Box<dyn std::error::Error>> {
         let assets_virtual = info.get_assets_virtual_dir();
         debug!(
             "    Creando directorio assets virtual: {}",
@@ -174,17 +175,13 @@ impl Launcher {
 
     fn build_variables(
         info: &VersionInfo,
-        user: MinecraftUser,
+        username: &str,
         instance_dir: &Path,
     ) -> HashMap<String, String> {
         let mut vars = HashMap::new();
+        let uuid = uuid::Uuid::new_v4().to_string();
 
-        let user_type = match user.user_type {
-            AccountType::Cracked => "mojang",
-            AccountType::Microsoft => "msa",
-        };
-
-        vars.insert("auth_player_name".to_string(), user.username);
+        vars.insert("auth_player_name".to_string(), username.to_string());
         vars.insert("version_name".to_string(), info.version_id.clone());
         vars.insert(
             "game_directory".to_string(),
@@ -198,9 +195,9 @@ impl Launcher {
             "assets_index_name".to_string(),
             info.get_assets_index_name(),
         );
-        vars.insert("auth_uuid".to_string(), user.uuid);
-        vars.insert("auth_access_token".to_string(), user.access_token);
-        vars.insert("user_type".to_string(), user_type.to_string());
+        vars.insert("auth_uuid".to_string(), uuid);
+        vars.insert("auth_access_token".to_string(), "0".to_string());
+        vars.insert("user_type".to_string(), "mojang".to_string());
         vars.insert("user_properties".to_string(), "{}".to_string());
         vars.insert(
             "version_type".to_string(),
@@ -224,7 +221,7 @@ impl Launcher {
         vars
     }
 
-    fn build_classpath(info: &VersionInfo) -> crate::Result<String> {
+    fn build_classpath(info: &VersionInfo) -> Result<String, Box<dyn std::error::Error>> {
         debug!(
             "    Inicializando DependencyResolver con lib_dir = {}",
             info.lib_dir.display()
@@ -279,8 +276,8 @@ impl Launcher {
         game_dir: &Path,
         java_path: impl AsRef<Path>,
         custom_env: HashMap<String, String>,
-    ) -> crate::Result<()> {
-        let java_home = java_path.as_ref().parent().ok_or(crate::Error::InvalidJavaPath("Invalid Java path".to_string()))?;
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let java_home = java_path.as_ref().parent().ok_or("Invalid Java path")?;
 
         debug!("[9] Comando final a ejecutar:");
         debug!("    {}", command.join(" "));
