@@ -1,4 +1,4 @@
-use claunch_rs::{LaunchOptions, Launcher};
+use claunch_rs::{LaunchOptions, Launcher, MinecraftUser};
 use std::collections::HashMap;
 use std::env;
 use std::path::Path;
@@ -46,15 +46,14 @@ fn main() {
     // ===== LANZAR =====
     match Launcher::launch_with_options(
         &version_json,
-        &shared_dir, // segundo argumento: directorio que contiene libraries/, assets/, versions/
-        &instance_dir, // tercer argumento: directorio de la instancia (mundo, config)
-        "Player",
+        &shared_dir,
+        &instance_dir,
+        MinecraftUser::cracked("Player"),
         &java_path,
         "2G",
         "4G",
         854,
         480,
-        true, // cracked mode
         options,
         custom_env,
     ) {

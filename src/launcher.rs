@@ -70,6 +70,12 @@ impl Launcher {
         debug!("    width x height:    {}x{}", width, height);
         debug!("    account_type:      {:?}", user.user_type);
         debug!("    demo_mode:         {}", options.demo_mode);
+
+        // Validar que el token esté presente para cuentas Premium
+        if user.user_type == AccountType::Microsoft && user.access_token.is_empty() {
+            error!("    ❌ ERROR: El access_token está vacío. ¿Olvidaste llamar a user.load_tokens()?");
+            return Err(crate::Error::AuthError("Missing access token for premium account. Call load_tokens() first.".to_string()));
+        }
         if !custom_env.is_empty() {
             debug!("    custom_env:        {:?}", custom_env);
         }

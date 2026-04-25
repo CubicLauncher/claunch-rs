@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Santiagolxx, Notstaff and CubicLauncher contributors
+// Copyright (C) 2026 Santiagolxx, Notstaff and CubicLauncher contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use crate::auth::MinecraftUser;
@@ -234,18 +234,36 @@ impl MicrosoftAuth {
             identity_token: format!("XBL3.0 x={};{}", user_hash, xsts_res.token),
         };
 
-        let mc_res = client
+        let res = client
             .post("https://api.minecraftservices.com/authentication/login_with_xbox")
             .json(&mc_login_req)
-            .send()?
-            .json::<MinecraftLoginResponse>()?;
+            .send()?;
+
+        if !res.status().is_success() {
+            let status = res.status();
+            let err_body = res.text().unwrap_or_default();
+            return Err(crate::Error::AuthError(format!("Minecraft login failed: {} - {}", status, err_body)));
+        }
+
+        let mc_res = res.json::<MinecraftLoginResponse>().map_err(|e| {
+            crate::Error::AuthError(format!("Failed to decode Minecraft login response: {}", e))
+        })?;
 
         // 4. MC Profile
-        let profile_res = client
+        let res = client
             .get("https://api.minecraftservices.com/minecraft/profile")
             .bearer_auth(&mc_res.access_token)
-            .send()?
-            .json::<MinecraftProfileResponse>()?;
+            .send()?;
+
+        if !res.status().is_success() {
+            let status = res.status();
+            let err_body = res.text().unwrap_or_default();
+            return Err(crate::Error::AuthError(format!("Failed to get Minecraft profile: {} - {}", status, err_body)));
+        }
+
+        let profile_res = res.json::<MinecraftProfileResponse>().map_err(|e| {
+            crate::Error::AuthError(format!("Failed to decode Minecraft profile response: {}", e))
+        })?;
 
         Ok(MinecraftUser::premium(
             profile_res.name,
