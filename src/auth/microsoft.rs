@@ -5,7 +5,7 @@ use crate::auth::MinecraftUser;
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 
-const CLIENT_ID: &str = "c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb"; // Minecraft Launcher Client ID
+pub const DEFAULT_CLIENT_ID: &str = "c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb"; // Minecraft Launcher Client ID
 const SCOPE: &str = "XboxLive.SignIn XboxLive.offline_access";
 
 #[derive(Debug, Deserialize)]
@@ -96,13 +96,36 @@ struct MinecraftProfileResponse {
     name: String,
 }
 
-pub struct MicrosoftAuth;
+/// Gestor de autenticación con Microsoft y Xbox Live.
+/// Permite configurar un `client_id` personalizado para el flujo de OAuth2.
+/// 
+/// Puedes usar `MicrosoftAuth::default()` para usar el Client ID oficial de Minecraft,
+/// o instanciarlo con tu propio ID usando `MicrosoftAuth::new("tu-client-id".to_string())`.
+#[derive(Debug, Clone)]
+pub struct MicrosoftAuth {
+    pub client_id: String,
+}
+
+impl Default for MicrosoftAuth {
+    /// Crea una instancia utilizando el Client ID oficial del Minecraft Launcher.
+    fn default() -> Self {
+        Self {
+            client_id: DEFAULT_CLIENT_ID.to_string(),
+        }
+    }
+}
 
 impl MicrosoftAuth {
-    pub fn get_device_code() -> crate::Result<DeviceCodeResponse> {
+    /// Crea una nueva instancia de autenticación con un Client ID personalizado.
+    /// Útil si has registrado tu propia aplicación en el portal de Azure.
+    pub fn new(client_id: String) -> Self {
+        Self { client_id }
+    }
+
+    pub fn get_device_code(&self) -> crate::Result<DeviceCodeResponse> {
         let client = reqwest::blocking::Client::new();
         let params = [
-            ("client_id", CLIENT_ID),
+            ("client_id", self.client_id.as_str()),
             ("scope", SCOPE),
         ];
 
@@ -125,6 +148,7 @@ impl MicrosoftAuth {
     }
 
     pub fn authenticate_with_device_code(
+        &self,
         device_code: &str,
         interval: u64,
         expires_in: u64,
@@ -140,7 +164,7 @@ impl MicrosoftAuth {
             }
 
             let params = [
-                ("client_id", CLIENT_ID),
+                ("client_id", self.client_id.as_str()),
                 ("device_code", device_code),
                 ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
             ];
@@ -165,10 +189,10 @@ impl MicrosoftAuth {
         }
     }
 
-    pub fn refresh_token(refresh_token: &str) -> crate::Result<MinecraftUser> {
+    pub fn refresh_token(&self, refresh_token: &str) -> crate::Result<MinecraftUser> {
         let client = reqwest::blocking::Client::new();
         let params = [
-            ("client_id", CLIENT_ID),
+            ("client_id", self.client_id.as_str()),
             ("refresh_token", refresh_token),
             ("grant_type", "refresh_token"),
         ];

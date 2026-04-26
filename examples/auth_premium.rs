@@ -13,14 +13,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 1. Get Device Code
     println!("Solicitando código de dispositivo...");
-    let device_code_res = MicrosoftAuth::get_device_code()?;
+    let ms_auth = MicrosoftAuth::default();
+    let device_code_res = ms_auth.get_device_code()?;
 
     println!("\nPor favor, ve a: {}", device_code_res.verification_uri);
     println!("Ingresa el código: {}", device_code_res.user_code);
     println!("\nEsperando a que completes el inicio de sesión...");
 
     // 2. Authenticate
-    let user = MicrosoftAuth::authenticate_with_device_code(
+    let user = ms_auth.authenticate_with_device_code(
         &device_code_res.device_code,
         device_code_res.interval,
         device_code_res.expires_in,
